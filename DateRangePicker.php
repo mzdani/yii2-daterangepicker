@@ -207,7 +207,7 @@ class DateRangePicker extends InputWidget {
 	protected function registerClientOptions($name, $id) {
 		if ($this->clientOptions !== false) {
 			$options  = empty($this->clientOptions) ? '' : Json::encode($this->clientOptions);
-			$callback = (!$this->callback) ? new JsExpression('function(start, end) { jQuery("#'.$id.'-start").val(start.format("YYYY-MM-DD")); jQuery("#'.$id.'-end").val(end.format("YYYY-MM-DD"));}') : new JsExpression($this->callback);
+			$callback = (!$this->callback) ? new JsExpression('function(start, end) { jQuery("#'.$id.'-start").val(start.format("YYYY-MM-DD 00:00:00")); jQuery("#'.$id.'-end").val(end.format("YYYY-MM-DD 23:59:59"));}') : new JsExpression($this->callback);
 			$js       = "jQuery('#$id').$name($options".(($callback !== '') ? ', '.$callback : '').");";
 			$this->getView()->registerJs($js);
 		}
