@@ -17,8 +17,8 @@ use yii\helpers\Html;
 use yii\helpers\Json;
 use yii\web\JsExpression;
 use yii\widgets\InputWidget;
-use mdscomp\widget\DateRangePickerAsset;
-use mdscomp\widget\MomentJSAsset;
+use mdscomp\widget\assets\DateRangePickerAsset;
+use mdscomp\widget\assets\MomentJSAsset;
 
 /**
  * Class DateRangePicker
@@ -27,7 +27,7 @@ class DateRangePicker extends InputWidget {
 	/**
 	 * @var string
 	 */
-	public $dateFormat;
+	public $format;
 	/**
 	 * @var string
 	 */
@@ -55,27 +55,39 @@ class DateRangePicker extends InputWidget {
 	/**
 	 * @var bool
 	 */
-	public $showDropdowns = true;
+	public $showDropdowns = false;
 	/**
 	 * @var bool
 	 */
-	public $showWeekNumbers = true;
+	public $showWeekNumbers = false;
 	/**
 	 * @var bool
 	 */
 	public $timePicker = false;
 	/**
+	 * @var int
+	 */
+	public $timePickerIncrement;
+	/**
+	 * @var int
+	 */
+	public $timePickerSeconds;
+	/**
 	 * @var bool
 	 */
 	public $timePicker12Hour = false;
 	/**
+	 * @var bool
+	 */
+	public $singleDatePicker = false;
+	/**
 	 * @var array
 	 */
-	public $defaultRanges = true;
+	public $defaultRanges = false;
 	/**
 	 * @var string
 	 */
-	public $language;
+	public $language = '';
 	/**
 	 * @var array the options for the underlying js widget.
 	 */
@@ -83,13 +95,25 @@ class DateRangePicker extends InputWidget {
 	/**
 	 * @var string js for callback function.
 	 */
-	public $callback;
+	public $callback = false;
+	/**
+	 * @var string
+	 */
+	public $class;
+
+	/**
+	 * @var null|string
+	 */
+	public $onHide       = null;
+	public $onShow       = null;
+	public $onApply      = null;
+	public $onCancel     = null;
+	public $showCalendar = null;
+	public $hideCalendar = null;
+	public $clearInput   = true;
 
 	public function init() {
 		parent::init();
-		if ($this->dateFormat === null) {
-			$this->dateFormat = $this->timePicker ? Yii::$app->formatter->datetimeFormat : Yii::$app->formatter->dateFormat;
-		}
 		if ($this->language === null) {
 			$this->language = Yii::$app->language;
 		}
@@ -99,14 +123,11 @@ class DateRangePicker extends InputWidget {
 		echo $this->renderWidget()."\n";
 		DateRangePickerAsset::register($this->view);
 		$containerID = $this->options['id'];
-		if (strncmp($this->dateFormat, 'php:', 4) === 0) {
-			$format = substr($this->dateFormat, 4);
-		} else {
-			$format = FormatConverter::convertDateIcuToPhp($this->dateFormat, 'datetime', $this->language);
-		}
-		$this->clientOptions['format']           = $this->convertDateFormat($format);
+
+		$this->clientOptions['format']           = $this->format;
 		$this->clientOptions['showDropdowns']    = $this->showDropdowns;
 		$this->clientOptions['showWeekNumbers']  = $this->showWeekNumbers;
+		$this->clientOptions['singleDatePicker'] = $this->singleDatePicker;
 		$this->clientOptions['timePicker']       = $this->timePicker;
 		$this->clientOptions['timePicker12Hour'] = $this->timePicker12Hour;
 		$this->clientOptions['opens']            = $this->opens;
@@ -118,6 +139,7 @@ class DateRangePicker extends InputWidget {
 		$this->setupRanges();
 		$this->localize();
 		$this->registerClientOptions('daterangepicker', $containerID);
+		$this->registerEvents($containerID);
 	}
 
 	protected function renderWidget() {
@@ -126,74 +148,30 @@ class DateRangePicker extends InputWidget {
 		} else {
 			$value = $this->value;
 		}
-		$options          = $this->options;
+		$options          = array_merge($this->options, [
+			'class'       => 'form-control',
+			'placeholder' => 'Start Date - End Date'
+		]);
 		$options['value'] = $value;
+
+		$contents[] = '<div class="row"><div class="col-xs-6 col-xs-offset-3">';
+		$contents[] = '<div class="input-group field-'.(($this->hasModel()) ? $this->attribute : $this->name).'">';
 		if ($this->hasModel()) {
 			$contents[] = Html::activeTextInput($this->model, $this->attribute, $options);
+			if (!$this->callback) {
+				$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-start', ['id' => $this->options['id'].'-start']);
+				$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-end', ['id' => $this->options['id'].'-end']);
+			}
 		} else {
-			$contents[] = Html::textInput($this->name, $value, $options);
+			$contents[] = '<span class="input-group-addon"><i class="fa fa-calendar"></i></span>'.Html::textInput($this->name, $value, $options);
+			if (!$this->callback) {
+				$contents[] = Html::hiddenInput($this->options['id'].'-start', null, ['id' => $this->options['id'].'-start']);
+				$contents[] = Html::hiddenInput($this->options['id'].'-end', null, ['id' => $this->options['id'].'-end']);
+			}
 		}
+		$contents[] = '</div></div></div>';
 
 		return implode("\n", $contents);
-	}
-
-	/**
-	 * Automatically convert the date format from PHP DateTime to Moment.js DateTime format
-	 * as required by bootstrap-daterangepicker plugin.
-	 *
-	 * @see    http://php.net/manual/en/function.date.php
-	 * @see    http://momentjs.com/docs/#/parsing/string-format/
-	 *
-	 * @param string $format the PHP date format string
-	 *
-	 * @return string
-	 * @author Kartik Visweswaran, Krajee.com, 2014
-	 */
-	protected static function convertDateFormat($format) {
-		return strtr($format, [
-			// meridian lowercase remains same
-			// 'a' => 'a',
-			// meridian uppercase remains same
-			// 'A' => 'A',
-			// second (with leading zeros)
-			's' => 'ss',
-			// minute (with leading zeros)
-			'i' => 'mm',
-			// hour in 12-hour format (no leading zeros)
-			'g' => 'h',
-			// hour in 12-hour format (with leading zeros)
-			'h' => 'hh',
-			// hour in 24-hour format (no leading zeros)
-			'G' => 'H',
-			// hour in 24-hour format (with leading zeros)
-			'H' => 'HH',
-			//  day of the week locale
-			'w' => 'e',
-			//  day of the week ISO
-			'W' => 'E',
-			// day of month (no leading zero)
-			'j' => 'D',
-			// day of month (two digit)
-			'd' => 'DD',
-			// day name short
-			'D' => 'DDD',
-			// day name long
-			'l' => 'DDDD',
-			// month of year (no leading zero)
-			'n' => 'M',
-			// month of year (two digit)
-			'm' => 'MM',
-			// month name short
-			'M' => 'MMM',
-			// month name long
-			'F' => 'MMMM',
-			// year (two digit)
-			'y' => 'YY',
-			// year (four digit)
-			'Y' => 'YYYY',
-			// unix timestamp
-			'U' => 'X',
-		]);
 	}
 
 	protected function setupRanges() {
@@ -215,10 +193,7 @@ class DateRangePicker extends InputWidget {
 			'cancelLabel'      => Yii::t('mdscomp/daterangepicker', 'Cancel', [], $this->language),
 			'fromLabel'        => Yii::t('mdscomp/daterangepicker', 'From', [], $this->language),
 			'toLabel'          => Yii::t('mdscomp/daterangepicker', 'To', [], $this->language),
-			//'weekLabel'        => Yii::t('mdscomp/daterangepicker', 'W', [], $this->language),
 			'customRangeLabel' => Yii::t('mdscomp/daterangepicker', 'Custom', [], $this->language),
-			//'daysOfWeek'       => Yii::t('mdscomp/daterangepicker', 'Custom', [], $this->language),
-			//'monthNames'       => Yii::t('mdscomp/daterangepicker', 'Custom', [], $this->language),
 			'firstDay'         => 1,
 		];
 	}
@@ -232,9 +207,86 @@ class DateRangePicker extends InputWidget {
 	protected function registerClientOptions($name, $id) {
 		if ($this->clientOptions !== false) {
 			$options  = empty($this->clientOptions) ? '' : Json::encode($this->clientOptions);
-			$callback = empty($this->callback) ? '' : new JsExpression($this->callback);
+			$callback = (!$this->callback) ? new JsExpression('function(start, end) { jQuery("#'.$id.'-start").val(start.format("YYYY-MM-DD")); jQuery("#'.$id.'-end").val(end.format("YYYY-MM-DD"));}') : new JsExpression($this->callback);
 			$js       = "jQuery('#$id').$name($options".(($callback !== '') ? ', '.$callback : '').");";
 			$this->getView()->registerJs($js);
 		}
 	}
+
+	protected function getInputId($model, $attribute){
+		return Html::getInputId($model, $attribute);
+	}
+
+	protected function registerEvents($id) {
+		$events = '';
+		if ($this->onShow !== null) {
+			$events .= $this->onShow($id);
+		}
+		if ($this->onHide !== null) {
+			$events .= $this->onHide($id);
+		}
+		if ($this->showCalendar !== null) {
+			$events .= $this->showCalendar($id);
+		}
+		if ($this->hideCalendar !== null) {
+			$events .= $this->hideCalendar($id);
+		}
+		if ($this->onApply !== null) {
+			$events .= $this->onApply($id);
+		}
+		if ($this->onCancel !== null) {
+			$this->clearInput = false;
+			$events .= $this->onCancel($id);
+		}
+		if ($this->clearInput) {
+			$events .= $this->clearInput($id);
+		}
+		if ($events !== '') {
+			$js = new JsExpression($events);
+			$this->getView()->registerJs($js);
+		}
+	}
+
+	protected function onShow() {
+		$js = 'jQuery(\'#'.$id.'\').on(\'onShow.daterangepicker\', function(ev, picker) { '.$this->onShow.' });';
+
+		return $js;
+	}
+
+	protected function onHide() {
+		$js = 'jQuery(\'#'.$id.'\').on(\'onHide.daterangepicker\', function(ev, picker) { '.$this->onHide.' });';
+
+		return $js;
+	}
+
+	protected function showCalendar() {
+		$js = 'jQuery(\'#'.$id.'\').on(\'showCalendar.daterangepicker\', function(ev, picker) { '.$this->showCalendar.' });';
+
+		return $js;
+	}
+
+	protected function hideCalendar() {
+		$js = 'jQuery(\'#'.$id.'\').on(\'hideCalendar.daterangepicker\', function(ev, picker) { '.$this->hideCalendar.' });';
+
+		return $js;
+	}
+
+	protected function onApply($id) {
+		$js = 'jQuery(\'#'.$id.'\').on(\'apply.daterangepicker\', function(ev, picker) { '.$this->onApply.' });';
+
+		return $js;
+	}
+
+	protected function onCancel($id) {
+		$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { '.$this->onCancel.' });';
+
+		return $js;
+	}
+
+	protected function clearInput($id) {
+		$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\'); });';
+
+		return $js;
+	}
+
 }

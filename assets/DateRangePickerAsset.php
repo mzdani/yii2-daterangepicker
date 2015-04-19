@@ -7,7 +7,7 @@
  * @license     Non-Freeware (Non Free Software License)
  */
 
-namespace mdscomp\widget;
+namespace mdscomp\widget\assets;
 
 use yii\web\AssetBundle;
 
@@ -23,7 +23,7 @@ class DateRangePickerAsset extends AssetBundle {
 		'daterangepicker-bs3.css'
 	];
 	public $depends    = [
-		'mdscomp\widget\MomentJSAsset',
 		'yii\web\JqueryAsset',
+		'mdscomp\widget\assets\MomentJSAsset',
 	];
 }

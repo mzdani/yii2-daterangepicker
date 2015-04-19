@@ -7,7 +7,7 @@
  * @license     Non-Freeware (Non Free Software License)
  */
 
-namespace mdscomp\widget;
+namespace mdscomp\widget\assets;
 
 use yii\web\AssetBundle;
 use yii\web\View;
@@ -16,16 +16,23 @@ use yii\web\View;
  * Class MomentJSAsset
  */
 class MomentJSAsset extends AssetBundle {
-	public $sourcePath = '@bower/moment/min';
-	public $js = [
-		'moment.min.js',
-		'locales.min.js',
+	public $sourcePath = '@bower/moment';
+	public $js         = [
+		'min/moment.min.js',
+		//'locales.min.js',
 	];
 
 	/**
 	 * @var string|null When null, language will be equal for current locale of the application
 	 */
 	public $language = null;
+
+	public static function register($view) {
+		MomentJSAsset::registerAssetFiles($view);
+		parent::register($view);
+		//return $view->registerAssetBundle(get_called_class());
+	}
+
 
 	public function registerAssetFiles($view) {
 		parent::registerAssetFiles($view);
@@ -38,10 +45,13 @@ class MomentJSAsset extends AssetBundle {
 	 * @param View   $view
 	 */
 	public function registerLanguage($language, $view) {
-		$view->registerJsFile($this->baseUrl."/locale/{$language}.js");
-		$js = <<<JS
+		if (file_exists($this->sourcePath."/locale/{$language}.js")) {
+			$this->js = array_merge($this->js, ['min/locales.min.js']);
+			$view->registerJsFile($this->baseUrl."/locale/{$language}.js");
+			$js = <<<JS
 moment.locale('{$language}');
 JS;
-		$view->registerJs($js, View::POS_READY, 'moment-locale-'.$language);
+			$view->registerJs($js, View::POS_READY, 'moment-locale-'.$language);
+		}
 	}
 }
