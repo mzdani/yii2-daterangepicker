@@ -111,6 +111,7 @@ class DateRangePicker extends InputWidget {
 	public $showCalendar = null;
 	public $hideCalendar = null;
 	public $clearInput   = true;
+	public $outputUnix   = true;
 
 	public function init() {
 		parent::init();
@@ -207,13 +208,20 @@ class DateRangePicker extends InputWidget {
 	protected function registerClientOptions($name, $id) {
 		if ($this->clientOptions !== false) {
 			$options  = empty($this->clientOptions) ? '' : Json::encode($this->clientOptions);
-			$callback = (!$this->callback) ? new JsExpression('function(start, end) { jQuery("#'.$id.'-start").val(start.format("YYYY-MM-DD 00:00:00")); jQuery("#'.$id.'-end").val(end.format("YYYY-MM-DD 23:59:59"));}') : new JsExpression($this->callback);
+			if($this->outputUnix){
+				$outputUnixStart = 'var unixStart = new Date(start.format("dddd, DD MMMM YYYY 00:00:00")).getUnixTime();';
+				$outputUnixEnd = 'var unixEnd = new Date(end.format("dddd, DD MMMM YYYY 23:59:59")).getUnixTime();';
+			} else {
+				$outputUnixStart = 'var unixStart = start.format("YYYY-MM-DD");';
+				$outputUnixEnd = 'var unixEnd = end.format("YYYY-MM-DD");';
+			}
+			$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'-start").val(unixStart); jQuery("#'.$id.'-end").val(unixEnd);}') : new JsExpression($this->callback);
 			$js       = "jQuery('#$id').$name($options".(($callback !== '') ? ', '.$callback : '').");";
 			$this->getView()->registerJs($js);
 		}
 	}
 
-	protected function getInputId($model, $attribute){
+	protected function getInputId($model, $attribute) {
 		return Html::getInputId($model, $attribute);
 	}
 
@@ -235,7 +243,6 @@ class DateRangePicker extends InputWidget {
 			$events .= $this->onApply($id);
 		}
 		if ($this->onCancel !== null) {
-			$this->clearInput = false;
 			$events .= $this->onCancel($id);
 		}
 		if ($this->clearInput) {
@@ -278,8 +285,12 @@ class DateRangePicker extends InputWidget {
 	}
 
 	protected function onCancel($id) {
-		$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { '.$this->onCancel.' });';
-
+		$clearInput = '';
+		if($this->clearInput){
+			$clearInput = 'jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\');';
+		}
+		$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { '.$clearInput.$this->onCancel.' });';
+		$this->clearInput = false;
 		return $js;
 	}
 
@@ -288,5 +299,4 @@ class DateRangePicker extends InputWidget {
 
 		return $js;
 	}
-
 }
