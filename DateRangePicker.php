@@ -100,6 +100,10 @@ class DateRangePicker extends InputWidget {
 	 * @var string
 	 */
 	public $class;
+	/**
+	 * @var string
+	 */
+	public $containerTemplate = '{input}';
 
 	/**
 	 * @var null|string
@@ -151,11 +155,9 @@ class DateRangePicker extends InputWidget {
 		}
 		$options          = array_merge($this->options, [
 			'class'       => 'form-control',
-			'placeholder' => 'Start Date - End Date'
 		]);
 		$options['value'] = $value;
 
-		$contents[] = '<div class="row"><div class="col-xs-6 col-xs-offset-3">';
 		$contents[] = '<div class="input-group field-'.(($this->hasModel()) ? $this->attribute : $this->name).'">';
 		if ($this->hasModel()) {
 			$contents[] = Html::activeTextInput($this->model, $this->attribute, $options);
@@ -170,9 +172,12 @@ class DateRangePicker extends InputWidget {
 				$contents[] = Html::hiddenInput($this->options['id'].'-end', null, ['id' => $this->options['id'].'-end']);
 			}
 		}
-		$contents[] = '</div></div></div>';
+		$contents[] = '</div>';
 
-		return implode("\n", $contents);
+		$contents = implode("\n", $contents);
+		$contents = str_replace('{input}', $contents, $this->containerTemplate);
+
+		return $contents;
 	}
 
 	protected function setupRanges() {
