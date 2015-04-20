@@ -1,5 +1,5 @@
 {
-    "name": "mdscomp/yii2-daterangepicker",
+    "name": "mzdani/yii2-daterangepicker",
     "description": "Yii2 Daterangepicker Wrapper",
     "type": "yii2-wrapper",
     "keywords": ["yii2", "wrapper", "daterangepicker wrapper"],
