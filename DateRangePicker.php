@@ -108,14 +108,19 @@ class DateRangePicker extends InputWidget {
 	/**
 	 * @var null|string
 	 */
-	public $onHide       = null;
-	public $onShow       = null;
-	public $onApply      = null;
-	public $onCancel     = null;
-	public $showCalendar = null;
-	public $hideCalendar = null;
-	public $clearInput   = true;
-	public $outputUnix   = true;
+	public $onHide                = null;
+	public $onShow                = null;
+	public $onApply               = null;
+	public $onCancel              = null;
+	public $showCalendar          = null;
+	public $hideCalendar          = null;
+	public $clearInput            = true;
+	public $outputUnix            = true;
+	public $outputUnixStartFormat = 'dddd, DD MMMM YYYY 00:00:00';
+	public $outputUnixEndFormat   = 'dddd, DD MMMM YYYY 23:59:59';
+	public $outputStartFormat     = 'YYYY-MM-DD';
+	public $outputEndFormat       = 'YYYY-MM-DD';
+	public $disabled              = false;
 
 	public function init() {
 		parent::init();
@@ -154,22 +159,33 @@ class DateRangePicker extends InputWidget {
 			$value = $this->value;
 		}
 		$options          = array_merge($this->options, [
-			'class'       => 'form-control',
+			'class' => 'form-control',
 		]);
 		$options['value'] = $value;
+		if($this->disabled){
+			$options['disabled'] = 'disabled';
+		}
 
 		$contents[] = '<div class="input-group field-'.(($this->hasModel()) ? $this->attribute : $this->name).'">';
 		if ($this->hasModel()) {
 			$contents[] = Html::activeTextInput($this->model, $this->attribute, $options);
 			if (!$this->callback) {
-				$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-start', ['id' => $this->options['id'].'-start']);
-				$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-end', ['id' => $this->options['id'].'-end']);
+				if ($this->singleDatePicker) {
+					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-selected', ['id' => $this->options['id'].'-selected']);
+				} else {
+					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-start', ['id' => $this->options['id'].'-start']);
+					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-end', ['id' => $this->options['id'].'-end']);
+				}
 			}
 		} else {
 			$contents[] = '<span class="input-group-addon"><i class="fa fa-calendar"></i></span>'.Html::textInput($this->name, $value, $options);
 			if (!$this->callback) {
-				$contents[] = Html::hiddenInput($this->options['id'].'-start', null, ['id' => $this->options['id'].'-start']);
-				$contents[] = Html::hiddenInput($this->options['id'].'-end', null, ['id' => $this->options['id'].'-end']);
+				if ($this->singleDatePicker) {
+					$contents[] = Html::hiddenInput($this->options['id'].'-selected', null, ['id' => $this->options['id'].'-selected']);
+				} else {
+					$contents[] = Html::hiddenInput($this->options['id'].'-start', null, ['id' => $this->options['id'].'-start']);
+					$contents[] = Html::hiddenInput($this->options['id'].'-end', null, ['id' => $this->options['id'].'-end']);
+				}
 			}
 		}
 		$contents[] = '</div>';
@@ -212,16 +228,20 @@ class DateRangePicker extends InputWidget {
 	 */
 	protected function registerClientOptions($name, $id) {
 		if ($this->clientOptions !== false) {
-			$options  = empty($this->clientOptions) ? '' : Json::encode($this->clientOptions);
-			if($this->outputUnix){
-				$outputUnixStart = 'var unixStart = new Date(start.format("dddd, DD MMMM YYYY 00:00:00")).getUnixTime();';
-				$outputUnixEnd = 'var unixEnd = new Date(end.format("dddd, DD MMMM YYYY 23:59:59")).getUnixTime();';
+			$options = empty($this->clientOptions) ? '' : Json::encode($this->clientOptions);
+			if ($this->outputUnix) {
+				$outputUnixStart = 'var unixStart = new Date(start.format("'.$this->outputUnixStartFormat.'")).getUnixTime();';
+				$outputUnixEnd   = 'var unixEnd = new Date(end.format("'.$this->outputUnixEndFormat.'")).getUnixTime();';
 			} else {
-				$outputUnixStart = 'var unixStart = start.format("YYYY-MM-DD");';
-				$outputUnixEnd = 'var unixEnd = end.format("YYYY-MM-DD");';
+				$outputUnixStart = 'var unixStart = start.format("'.$this->outputStartFormat.'");';
+				$outputUnixEnd   = 'var unixEnd = end.format("'.$this->outputEndFormat.'");';
 			}
-			$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'-start").val(unixStart); jQuery("#'.$id.'-end").val(unixEnd);}') : new JsExpression($this->callback);
-			$js       = "jQuery('#$id').$name($options".(($callback !== '') ? ', '.$callback : '').");";
+			if ($this->singleDatePicker) {
+				$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'-selected").val(unixStart); }') : new JsExpression($this->callback);
+			} else {
+				$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'-start").val(unixStart); jQuery("#'.$id.'-end").val(unixEnd); }') : new JsExpression($this->callback);
+			}
+			$js = "jQuery('#$id').$name($options".(($callback !== '') ? ', '.$callback : '').");";
 			$this->getView()->registerJs($js);
 		}
 	}
@@ -291,16 +311,25 @@ class DateRangePicker extends InputWidget {
 
 	protected function onCancel($id) {
 		$clearInput = '';
-		if($this->clearInput){
-			$clearInput = 'jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\');';
+		if ($this->clearInput) {
+			if ($this->singleDatePicker) {
+				$clearInput = 'jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-selected\').val(\'\');';
+			} else {
+				$clearInput = 'jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\');';
+			}
 		}
-		$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { '.$clearInput.$this->onCancel.' });';
+		$js               = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { '.$clearInput.$this->onCancel.' });';
 		$this->clearInput = false;
+
 		return $js;
 	}
 
 	protected function clearInput($id) {
-		$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\'); });';
+		if ($this->singleDatePicker) {
+			$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-selected\').val(\'\'); });';
+		} else {
+			$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\'); });';
+		}
 
 		return $js;
 	}
