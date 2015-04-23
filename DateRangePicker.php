@@ -121,6 +121,8 @@ class DateRangePicker extends InputWidget {
 	public $outputStartFormat     = 'YYYY-MM-DD';
 	public $outputEndFormat       = 'YYYY-MM-DD';
 	public $disabled              = false;
+	public $defaultValue          = false;
+	public $outputValue           = false;
 
 	public function init() {
 		parent::init();
@@ -153,16 +155,12 @@ class DateRangePicker extends InputWidget {
 	}
 
 	protected function renderWidget() {
-		if ($this->hasModel()) {
-			$value = Html::getAttributeValue($this->model, $this->attribute);
-		} else {
-			$value = $this->value;
-		}
-		$options          = array_merge($this->options, [
+		$options = array_merge($this->options, [
 			'class' => 'form-control',
 		]);
-		$options['value'] = $value;
-		if($this->disabled){
+
+		$options['value'] = $this->defaultValue;
+		if ($this->disabled) {
 			$options['disabled'] = 'disabled';
 		}
 
@@ -171,20 +169,20 @@ class DateRangePicker extends InputWidget {
 			$contents[] = Html::activeTextInput($this->model, $this->attribute, $options);
 			if (!$this->callback) {
 				if ($this->singleDatePicker) {
-					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-selected', ['id' => $this->options['id'].'-selected']);
+					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-selected', $this->outputValue, ['id' => $this->options['id'].'-selected']);
 				} else {
-					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-start', ['id' => $this->options['id'].'-start']);
-					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-end', ['id' => $this->options['id'].'-end']);
+					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-start', $this->outputValue, ['id' => $this->options['id'].'-start']);
+					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-end', $this->outputValue, ['id' => $this->options['id'].'-end']);
 				}
 			}
 		} else {
-			$contents[] = '<span class="input-group-addon"><i class="fa fa-calendar"></i></span>'.Html::textInput($this->name, $value, $options);
+			$contents[] = '<span class="input-group-addon"><i class="fa fa-calendar"></i></span>'.Html::textInput($this->name, $this->defaultValue, $options);
 			if (!$this->callback) {
 				if ($this->singleDatePicker) {
-					$contents[] = Html::hiddenInput($this->options['id'].'-selected', null, ['id' => $this->options['id'].'-selected']);
+					$contents[] = Html::hiddenInput($this->options['id'].'-selected', $this->outputValue, ['id' => $this->options['id'].'-selected']);
 				} else {
-					$contents[] = Html::hiddenInput($this->options['id'].'-start', null, ['id' => $this->options['id'].'-start']);
-					$contents[] = Html::hiddenInput($this->options['id'].'-end', null, ['id' => $this->options['id'].'-end']);
+					$contents[] = Html::hiddenInput($this->options['id'].'-start', $this->outputValue, ['id' => $this->options['id'].'-start']);
+					$contents[] = Html::hiddenInput($this->options['id'].'-end', $this->outputValue, ['id' => $this->options['id'].'-end']);
 				}
 			}
 		}
