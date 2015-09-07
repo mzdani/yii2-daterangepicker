@@ -4,7 +4,7 @@
     "type": "yii2-wrapper",
     "keywords": ["yii2", "wrapper", "daterangepicker wrapper"],
     "license": "BSD-3-Clause",
-    "version": "1.1.5",
+    "version": "1.2.6",
     "support": {
         "issues": "https://bitbucket.org/mzdani/yii2-daterangepicker/issues?status=new&status=open",
         "source": "https://bitbucket.org/mzdani/yii2-daterangepicker.git"
