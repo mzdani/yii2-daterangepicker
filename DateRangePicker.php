@@ -164,15 +164,15 @@ class DateRangePicker extends InputWidget {
 			$options['disabled'] = 'disabled';
 		}
 
-		$contents[] = '<div class="input-group field-'.(($this->hasModel()) ? $this->attribute : $this->name).'">';
+		$contents[] = '<div class="col-md-12 input-group field-'.(($this->hasModel()) ? $this->attribute : $this->name).'">';
 		if ($this->hasModel()) {
-			$contents[] = Html::activeTextInput($this->model, $this->attribute, $options);
+			$contents[] = Html::textInput($this->options['id'].'-select', $this->defaultValue, ['id' => $this->options['id'].'-select']+$options);
 			if (!$this->callback) {
 				if ($this->singleDatePicker) {
-					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-selected', $this->outputValue, ['id' => $this->options['id'].'-selected']);
+					$contents[] = Html::activeHiddenInput($this->model, $this->attribute, $options);
 				} else {
-					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-start', $this->outputValue, ['id' => $this->options['id'].'-start']);
-					$contents[] = Html::hiddenInput($this->model, $this->options['id'].'-end', $this->outputValue, ['id' => $this->options['id'].'-end']);
+					$contents[] = Html::activeHiddenInput($this->model, $this->attribute.'start', $options+['id' => $this->attribute.'start']);
+					$contents[] = Html::activeHiddenInput($this->model, $this->attribute.'end', [$options, 'id' => $this->attribute.'end']);
 				}
 			}
 		} else {
@@ -234,12 +234,21 @@ class DateRangePicker extends InputWidget {
 				$outputUnixStart = 'var unixStart = start.format("'.$this->outputStartFormat.'");';
 				$outputUnixEnd   = 'var unixEnd = end.format("'.$this->outputEndFormat.'");';
 			}
-			if ($this->singleDatePicker) {
-				$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'-selected").val(unixStart); }') : new JsExpression($this->callback);
+			if($this->hasModel()){
+				if ($this->singleDatePicker) {
+					$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'").val(unixStart); console.log(unixStart);}') : new JsExpression($this->callback);
+				} else {
+					$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'start").val(unixStart); jQuery("#'.$id.'end").val(unixEnd); }') : new JsExpression($this->callback);
+				}
 			} else {
-				$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'-start").val(unixStart); jQuery("#'.$id.'-end").val(unixEnd); }') : new JsExpression($this->callback);
+				if ($this->singleDatePicker) {
+					$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'-selected").val(unixStart); }') : new JsExpression($this->callback);
+				} else {
+					$callback = (!$this->callback) ? new JsExpression('function(start, end) { '.$outputUnixStart.$outputUnixEnd.' jQuery("#'.$id.'-start").val(unixStart); jQuery("#'.$id.'-end").val(unixEnd); }') : new JsExpression($this->callback);
+				}
 			}
-			$js = "jQuery('#$id').$name($options".(($callback !== '') ? ', '.$callback : '').");";
+
+			$js = "jQuery('#".(($this->hasModel()) ? $id.'-select' : $id)."').$name($options".(($callback !== '') ? ', '.$callback : '').");";
 			$this->getView()->registerJs($js);
 		}
 	}
@@ -277,32 +286,32 @@ class DateRangePicker extends InputWidget {
 		}
 	}
 
-	protected function onShow() {
-		$js = 'jQuery(\'#'.$id.'\').on(\'onShow.daterangepicker\', function(ev, picker) { '.$this->onShow.' });';
+	protected function onShow($id) {
+		$js = 'jQuery(\'#'.(($this->hasModel()) ? $id.'-select' : $id).'\').on(\'onShow.daterangepicker\', function(ev, picker) { '.$this->onShow.' });';
 
 		return $js;
 	}
 
-	protected function onHide() {
-		$js = 'jQuery(\'#'.$id.'\').on(\'onHide.daterangepicker\', function(ev, picker) { '.$this->onHide.' });';
+	protected function onHide($id) {
+		$js = 'jQuery(\'#'.(($this->hasModel()) ? $id.'-select' : $id).'\').on(\'onHide.daterangepicker\', function(ev, picker) { '.$this->onHide.' });';
 
 		return $js;
 	}
 
-	protected function showCalendar() {
-		$js = 'jQuery(\'#'.$id.'\').on(\'showCalendar.daterangepicker\', function(ev, picker) { '.$this->showCalendar.' });';
+	protected function showCalendar($id) {
+		$js = 'jQuery(\'#'.(($this->hasModel()) ? $id.'-select' : $id).'\').on(\'showCalendar.daterangepicker\', function(ev, picker) { '.$this->showCalendar.' });';
 
 		return $js;
 	}
 
-	protected function hideCalendar() {
-		$js = 'jQuery(\'#'.$id.'\').on(\'hideCalendar.daterangepicker\', function(ev, picker) { '.$this->hideCalendar.' });';
+	protected function hideCalendar($id) {
+		$js = 'jQuery(\'#'.(($this->hasModel()) ? $id.'-select' : $id).'\').on(\'hideCalendar.daterangepicker\', function(ev, picker) { '.$this->hideCalendar.' });';
 
 		return $js;
 	}
 
 	protected function onApply($id) {
-		$js = 'jQuery(\'#'.$id.'\').on(\'apply.daterangepicker\', function(ev, picker) { '.$this->onApply.' });';
+		$js = 'jQuery(\'#'.(($this->hasModel()) ? $id.'-select' : $id).'\').on(\'apply.daterangepicker\', function(ev, picker) { '.$this->onApply.' });';
 
 		return $js;
 	}
@@ -316,7 +325,7 @@ class DateRangePicker extends InputWidget {
 				$clearInput = 'jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\');';
 			}
 		}
-		$js               = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { '.$clearInput.$this->onCancel.' });';
+		$js               = 'jQuery(\'#'.(($this->hasModel()) ? $id.'-select' : $id).'\').on(\'cancel.daterangepicker\', function(ev, picker) { '.$clearInput.$this->onCancel.' });';
 		$this->clearInput = false;
 
 		return $js;
@@ -324,9 +333,9 @@ class DateRangePicker extends InputWidget {
 
 	protected function clearInput($id) {
 		if ($this->singleDatePicker) {
-			$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-selected\').val(\'\'); });';
+			$js = 'jQuery(\'#'.(($this->hasModel()) ? $id.'-select' : $id).'\').on(\'cancel.daterangepicker\', function(ev, picker) { jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-selected\').val(\'\'); });';
 		} else {
-			$js = 'jQuery(\'#'.$id.'\').on(\'cancel.daterangepicker\', function(ev, picker) { jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\'); });';
+			$js = 'jQuery(\'#'.(($this->hasModel()) ? $id.'-select' : $id).'\').on(\'cancel.daterangepicker\', function(ev, picker) { jQuery(\'#'.$this->options['id'].'\').val(\'\'); jQuery(\'#'.$this->options['id'].'-start\').val(\'\'); jQuery(\'#'.$this->options['id'].'-end\').val(\'\'); });';
 		}
 
 		return $js;
