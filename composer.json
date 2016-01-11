@@ -2,18 +2,18 @@
     "name": "mzdani/yii2-daterangepicker",
     "description": "Yii2 Daterangepicker Wrapper",
     "type": "yii2-wrapper",
-    "keywords": ["yii2", "wrapper", "daterangepicker wrapper"],
+    "keywords": ["yii2", "wrapper", "daterangepicker", "daterangpicker bootstrap"],
     "license": "BSD-3-Clause",
-    "version": "1.2.7",
+    "version": "1.2.9",
     "support": {
-        "issues": "https://bitbucket.org/mzdani/yii2-daterangepicker/issues?status=new&status=open",
-        "source": "https://bitbucket.org/mzdani/yii2-daterangepicker.git"
+        "issues": "https://github.com/mzdani/yii2-daterangepicker/issues",
+        "source": "https://github.com/mzdani/yii2-daterangepicker"
     },
     "authors": [
         {
             "name": "Mirdani Handoko",
             "email": "admin@mdscomp.net",
-            "homepage": "https://www.mdscomp.net",
+            "homepage": "http://mzdani.github.io/yii2-daterangepicker",
             "role": "Developer"
         }
     ],
